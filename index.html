@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="system" class="is-loading">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>iTab</title>
+  <meta name="theme-color" content="#0f0f23" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon128.png" sizes="128x128" type="image/png" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icons/icon128.png" />
+  <link rel="stylesheet" href="style.css" />
+  <!-- 흰 캔버스 차단 + body 투명 시작 -->
+  <style>html { background-color: #0f0f23; }</style>
+</head>
+<body style="opacity: 0; transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1);">
+
+  <!-- 배경 이미지 레이어 -->
+  <div id="bg-image"></div>
+  <!-- 배경 블러 (이미지 위, 어둡기 오버레이 아래) -->
+  <div id="bg-blur" aria-hidden="true"></div>
+  <!-- 배경 오버레이 (밝기 조절) -->
+  <div id="bg-overlay"></div>
+
+  <!-- 메인 컨테이너 -->
+  <div id="main-container">
+
+    <!-- 검색 섹션 -->
+    <section id="search-section">
+      <div id="search-bar">
+        <button id="engine-btn" title="검색 엔진 홈으로 이동" aria-label="검색 엔진">
+          <img id="engine-icon" src="" alt="검색 엔진" />
+        </button>
+        <input
+          type="text"
+          id="search-input"
+          placeholder="검색어를 입력하세요..."
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <button id="search-submit" aria-label="검색">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </button>
+      </div>
+      <!-- 검색 드롭다운 (히스토리 + 추천) -->
+      <div id="search-dropdown" class="hidden" role="listbox" aria-label="검색 제안"></div>
+    </section>
+
+    <!-- 아이콘 그리드 섹션 -->
+    <section id="icon-grid-section">
+      <div id="icon-grid-wrap">
+        <div id="icon-grid-column">
+          <div id="icon-grid"></div>
+        </div>
+        <div id="page-dots" class="page-dots" role="tablist" aria-label="페이지"></div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- 좌측 상단: 닉네임 인사말 -->
+  <div id="nickname-display" class="hidden"></div>
+
+  <!-- 우측 상단: 배경 히스토리 + 설정 버튼 -->
+  <div id="top-right-bar">
+    <div id="bg-history-bar"></div>
+    <button id="settings-btn" aria-label="설정 열기">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- 설정 오버레이 (패널 외부 클릭 시 닫기) -->
+  <div id="settings-overlay"></div>
+
+  <!-- 설정 패널 -->
+  <aside id="settings-panel" aria-label="설정 패널">
+    <div id="settings-header">
+      <h2>설정</h2>
+      <button id="settings-close" aria-label="설정 닫기">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <div id="settings-body">
+
+      <!-- 0. 닉네임 섹션 -->
+      <details class="settings-section" open>
+        <summary class="section-title">
+          <span class="section-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </span>
+          닉네임
+        </summary>
+        <div class="section-content">
+          <div class="control-group">
+            <label class="control-label" for="nickname-input">닉네임</label>
+            <div class="input-row">
+              <input type="text" id="nickname-input" class="text-input" placeholder="닉네임을 입력하세요" maxlength="20" autocomplete="off" />
+              <button id="nickname-lock-btn" class="key-lock-btn" title="입력 잠금">
+                <svg id="nickname-lock-icon-unlock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                  <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+                </svg>
+                <svg id="nickname-lock-icon-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+              </button>
+            </div>
+            <span id="nickname-error" class="nickname-error hidden">닉네임을 먼저 입력해 주세요.</span>
+          </div>
+        </div>
+      </details>
+
+      <!-- 1. 테마 섹션 -->
+      <details class="settings-section" open>
+        <summary class="section-title">
+          <span class="section-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          </span>
+          테마
+        </summary>
+        <div class="section-content">
+          <div class="control-group">
+            <label class="control-label">테마 모드</label>
+            <div class="radio-group">
+              <label class="radio-item">
+                <input type="radio" name="theme" value="system" />
+                <span>시스템</span>
+              </label>
+              <label class="radio-item">
+                <input type="radio" name="theme" value="light" />
+                <span>라이트</span>
+              </label>
+              <label class="radio-item">
+                <input type="radio" name="theme" value="dark" />
+                <span>다크</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- 2. 배경 섹션 -->
+      <details class="settings-section">
+        <summary class="section-title">
+          <span class="section-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </span>
+          배경
+        </summary>
+        <div class="section-content">
+          <div class="control-group">
+            <label class="control-label">배경 소스</label>
+            <div class="radio-group">
+              <label class="radio-item">
+                <input type="radio" name="bgSource" value="pixabay" />
+                <span>Pixabay</span>
+              </label>
+              <label class="radio-item">
+                <input type="radio" name="bgSource" value="local" />
+                <span>로컬 이미지</span>
+              </label>
+              <label class="radio-item">
+                <input type="radio" name="bgSource" value="none" />
+                <span>없음</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Pixabay 설정 -->
+          <div id="pixabay-settings" class="sub-section">
+            <div class="control-group">
+              <label class="control-label" for="pixabay-api-key">Pixabay API Key</label>
+              <div class="input-row">
+                <input type="password" id="pixabay-api-key" class="text-input" placeholder="API 키를 입력하세요" />
+                <button id="pixabay-key-lock-btn" class="key-lock-btn" title="입력 잠금">
+                  <!-- 잠금 해제 아이콘 (기본 상태: 편집 가능) -->
+                  <svg id="key-lock-icon-unlock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+                  </svg>
+                  <!-- 잠금 아이콘 (잠금 상태) -->
+                  <svg id="key-lock-icon-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                  </svg>
+                </button>
+              </div>
+              <a href="https://pixabay.com/api/docs/" target="_blank" class="hint-link">API 키 발급받기 →</a>
+            </div>
+            <div class="control-group">
+              <label class="control-label" for="pixabay-keyword">검색 키워드</label>
+              <div class="input-row">
+                <input type="text" id="pixabay-keyword" class="text-input" placeholder="예: nature, city, abstract" />
+                <button id="pixabay-search-btn" class="btn-primary btn-sm">검색</button>
+              </div>
+            </div>
+            <div id="pixabay-results" class="pixabay-grid"></div>
+          </div>
+
+          <!-- 로컬 이미지 설정 -->
+          <div id="local-bg-settings" class="sub-section hidden">
+            <div class="control-group">
+              <label class="control-label">로컬 이미지 선택</label>
+              <label class="file-upload-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                이미지 선택
+                <input type="file" id="local-bg-input" accept="image/*" style="display:none" />
+              </label>
+              <div id="local-bg-preview" class="bg-preview hidden"></div>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label class="control-label">
+              배경 밝기
+              <span class="value-badge" id="overlay-opacity-val">0%</span>
+            </label>
+            <input type="range" id="overlay-opacity" min="0" max="90" step="1" value="0" class="slider" />
+          </div>
+          <div class="control-group">
+            <label class="control-label">
+              배경 블러
+              <span class="value-badge" id="bg-blur-val">0px</span>
+            </label>
+            <input type="range" id="bg-blur-slider" min="0" max="32" step="1" value="0" class="slider" />
+          </div>
+        </div>
+      </details>
+
+      <!-- 3. 검색창 섹션 -->
+      <details class="settings-section">
+        <summary class="section-title">
+          <span class="section-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </span>
+          검색창
+        </summary>
+        <div class="section-content">
+          <div class="control-group">
+            <label class="control-label">기본 검색 엔진</label>
+            <div class="radio-group">
+              <label class="radio-item">
+                <input type="radio" name="searchEngine" value="naver" />
+                <span>네이버</span>
+              </label>
+              <label class="radio-item">
+                <input type="radio" name="searchEngine" value="google" />
+                <span>구글</span>
+              </label>
+              <label class="radio-item">
+                <input type="radio" name="searchEngine" value="custom" />
+                <span>사용자 정의</span>
+              </label>
+            </div>
+          </div>
+          <div id="custom-search-settings" class="sub-section hidden">
+            <div class="control-group">
+              <label class="control-label" for="custom-search-name">검색 엔진 이름</label>
+              <input type="text" id="custom-search-name" class="text-input" placeholder="검색 엔진 이름" />
+            </div>
+            <div class="control-group">
+              <label class="control-label" for="custom-search-url">검색 URL</label>
+              <input type="text" id="custom-search-url" class="text-input" placeholder="https://example.com/search?q={query}" />
+              <span class="hint-text">{query} 위치에 검색어가 삽입됩니다.</span>
+            </div>
+            <div class="control-group">
+              <label class="control-label" for="custom-search-home">홈 URL</label>
+              <input type="text" id="custom-search-home" class="text-input" placeholder="https://example.com" />
+            </div>
+          </div>
+          <div class="control-group">
+            <label class="control-label">
+              검색창 너비
+              <span class="value-badge" id="search-width-val">600px</span>
+            </label>
+            <input type="range" id="search-width" min="300" max="1000" step="10" value="600" class="slider" />
+          </div>
+          <div class="control-group">
+            <label class="control-label">
+              상단 여백 (위치)
+              <span class="value-badge" id="search-margin-top-val">35%</span>
+            </label>
+            <input type="range" id="search-margin-top" min="5" max="70" step="1" value="35" class="slider" />
+          </div>
+        </div>
+      </details>
+
+      <!-- 4. 아이콘 섹션 -->
+      <details class="settings-section">
+        <summary class="section-title">
+          <span class="section-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          </span>
+          아이콘
+        </summary>
+        <div class="section-content">
+          <div class="control-group">
+            <label class="control-label">
+              검색창과의 간격
+              <span class="value-badge" id="grid-gap-top-val">24px</span>
+            </label>
+            <input type="range" id="grid-gap-top" min="0" max="100" step="4" value="24" class="slider" />
+          </div>
+          <div class="control-group">
+            <label class="control-label">
+              가로 개수
+              <span class="value-badge" id="icon-cols-val">8</span>
+            </label>
+            <input type="range" id="icon-cols" min="5" max="12" step="1" value="8" class="slider" />
+          </div>
+          <div class="control-group">
+            <label class="control-label">
+              세로 개수
+              <span class="value-badge" id="icon-rows-val">3</span>
+            </label>
+            <input type="range" id="icon-rows" min="1" max="7" step="1" value="3" class="slider" />
+          </div>
+          <div class="control-group">
+            <label class="control-label">
+              가로 간격
+              <span class="value-badge" id="icon-gap-x-val">16px</span>
+            </label>
+            <input type="range" id="icon-gap-x" min="4" max="60" step="2" value="16" class="slider" />
+          </div>
+          <div class="control-group">
+            <label class="control-label">
+              세로 간격
+              <span class="value-badge" id="icon-gap-y-val">16px</span>
+            </label>
+            <input type="range" id="icon-gap-y" min="4" max="60" step="2" value="16" class="slider" />
+          </div>
+          <div class="control-group">
+            <label class="control-label">
+              아이콘 크기
+              <span class="value-badge" id="icon-size-val">56px</span>
+            </label>
+            <input type="range" id="icon-size" min="32" max="96" step="4" value="56" class="slider" />
+          </div>
+          <div class="control-group">
+            <label class="control-label">
+              아이콘 모양 (모서리 둥글기)
+              <span class="value-badge" id="icon-corner-radius-val">40%</span>
+            </label>
+            <input type="range" id="icon-corner-radius" min="0" max="100" step="1" value="40" class="slider" />
+            <p class="hint-text">왼쪽은 직각에 가깝고, 오른쪽으로 갈수록 둥글어지며 끝은 원형에 가깝습니다. 앱 아이콘 느낌은 높은 값과 아이콘 수정에서 이미지 크기를 조절하는 조합을 쓰면 됩니다.</p>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="control-group">
+            <label class="control-label">
+              아이콘 이름 폰트 크기
+              <span class="value-badge" id="label-font-size-val">11px</span>
+            </label>
+            <input type="range" id="label-font-size" min="8" max="20" step="1" value="11" class="slider" />
+          </div>
+          <div class="control-group">
+            <label class="control-label">아이콘 이름 색상</label>
+            <div class="color-row">
+              <input type="color" id="label-color" value="#ffffff" class="color-picker" />
+              <span id="label-color-hex">#ffffff</span>
+            </div>
+          </div>
+          <div class="control-group">
+            <label class="checkbox-item">
+              <input type="checkbox" id="label-shadow" checked />
+              <span>이름 그림자 효과</span>
+            </label>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="control-group">
+            <label class="control-label">북마크</label>
+            <p class="hint-text">바로가기를 북마크 바의 「iTab 북마크」 폴더에 저장하거나, 브라우저 북마크에서 가져옵니다. 폴더가 이미 있으면 그 안의 항목이 현재 바로가기로 바뀝니다.</p>
+            <button id="send-to-bookmarks-btn" class="btn-secondary btn-full">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              북마크로 보내기
+            </button>
+            <button id="add-from-bookmarks-btn" class="btn-secondary btn-full">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+              북마크에서 가져오기
+            </button>
+          </div>
+        </div>
+      </details>
+
+      <!-- 5. 가져오기/내보내기 섹션 -->
+      <details class="settings-section">
+        <summary class="section-title">
+          <span class="section-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </span>
+          가져오기 / 내보내기
+        </summary>
+        <div class="section-content">
+          <div class="control-group">
+            <label class="control-label">설정 내보내기</label>
+            <p class="hint-text">현재 모든 설정과 아이콘을 JSON 파일로 저장합니다.</p>
+            <button id="export-btn" class="btn-secondary btn-full">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              내보내기 (.json)
+            </button>
+          </div>
+          <div class="control-group">
+            <label class="control-label">설정 가져오기</label>
+            <p class="hint-text">JSON 파일을 불러와 현재 설정을 덮어씁니다.</p>
+            <label class="btn-secondary btn-full file-upload-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              가져오기 (.json)
+              <input type="file" id="import-input" accept=".json" style="display:none" />
+            </label>
+          </div>
+        </div>
+      </details>
+
+    </div>
+  </aside>
+
+  <!-- 아이콘 추가·수정 공통 모달 -->
+  <div id="edit-icon-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="edit-modal-title">아이콘 수정</h3>
+        <button class="modal-close" data-modal="edit-icon-modal" aria-label="닫기">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="edit-icon-name">이름</label>
+          <input type="text" id="edit-icon-name" class="text-input" placeholder="예: 네이버" />
+        </div>
+        <div class="form-group">
+          <label for="edit-icon-url">URL</label>
+          <input type="text" id="edit-icon-url" class="text-input" />
+        </div>
+        <div class="form-group">
+          <label>아이콘 이미지 <span class="upload-hint">선택 · 미업로드 시 URL 기준 자동 검색</span></label>
+          <div class="icon-upload-row">
+            <div id="edit-icon-preview-wrap" class="modal-icon-preview">
+              <img id="edit-icon-img-preview" class="hidden" alt="미리보기" />
+              <span id="edit-icon-preview-ph" class="preview-placeholder">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              </span>
+            </div>
+            <div class="icon-upload-actions">
+              <label class="btn-secondary btn-sm file-upload-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                이미지 변경
+                <input type="file" id="edit-icon-file" accept="image/png,image/jpeg,image/svg+xml,image/webp" style="display:none" />
+              </label>
+              <button id="edit-icon-file-reset" type="button" class="btn-ghost btn-sm hidden">이미지 삭제</button>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="control-label">
+            이미지 크기 (틀 안 비율)
+            <span class="value-badge" id="edit-icon-zoom-val">100%</span>
+          </label>
+          <input type="range" id="edit-icon-zoom" min="50" max="150" step="5" value="100" class="slider" />
+          <p class="hint-text">작게 하면 여백이 늘고, 크게 하면 잘려 보일 수 있습니다.</p>
+        </div>
+        <div class="form-group">
+          <label class="control-label">타일 배경</label>
+          <div class="radio-group">
+            <label class="radio-item">
+              <input type="radio" name="edit-icon-backdrop" value="default" />
+              <span>기본 (글래스)</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="edit-icon-backdrop" value="transparent" />
+              <span>투명</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="edit-icon-backdrop" value="solid" />
+              <span>단색</span>
+            </label>
+          </div>
+          <div id="edit-icon-backdrop-color-row" class="hidden" style="margin-top:10px">
+            <label for="edit-icon-backdrop-color-hex" class="control-label" style="margin-bottom:6px;display:block">배경 색</label>
+            <div class="color-row">
+              <input type="color" id="edit-icon-backdrop-color" value="#ffffff" class="color-picker" aria-label="시스템 색상 창" />
+              <input type="text" id="edit-icon-backdrop-color-hex" class="color-hex-input" value="#ffffff" maxlength="7" spellcheck="false" autocomplete="off" inputmode="text" title="#RRGGBB 또는 #RGB" aria-label="배경 색 HEX" />
+            </div>
+            <p class="hint-text" style="margin-top:6px;margin-bottom:0">컬러 상자를 클릭하거나 HEX 입력 상자에 직접 입력하세요.</p>
+          </div>
+          <label class="checkbox-item" style="margin-top:12px">
+            <input type="checkbox" id="edit-icon-tile-border" checked />
+            <span>타일 테두리 표시</span>
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="edit-icon-delete" class="btn-danger">삭제</button>
+        <div style="flex:1"></div>
+        <button class="btn-ghost" data-modal="edit-icon-modal">취소</button>
+        <button id="edit-icon-confirm" class="btn-primary">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 북마크 선택 모달 -->
+  <div id="bookmark-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="bookmark-modal-title">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-wide">
+      <div class="modal-header">
+        <h3 id="bookmark-modal-title">북마크에서 아이콘 추가</h3>
+        <button class="modal-close" data-modal="bookmark-modal" aria-label="닫기">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body bookmark-modal-body">
+        <p class="hint-text" style="flex-shrink:0">추가할 북마크를 선택하세요. (복수 선택 가능)</p>
+        <div id="bookmark-list" class="bookmark-list"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" data-modal="bookmark-modal">취소</button>
+        <button id="bookmark-confirm" class="btn-primary">선택한 항목 추가</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 수정 모드 안내 바 -->
+  <div id="edit-mode-bar" class="hidden">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+    수정할 아이콘을 클릭하세요
+  </div>
+
+  <!-- 웰컴 모달 (최초 닉네임 설정) -->
+  <div id="welcome-modal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
+    <div class="welcome-content">
+      <div class="welcome-logo">iTab</div>
+      <h2 class="welcome-title" id="welcome-title">환영합니다!</h2>
+      <p class="welcome-desc">닉네임을 입력하고 나만의 새 탭을 시작해보세요.</p>
+      <div class="welcome-input-group">
+        <input
+          type="text"
+          id="welcome-nickname-input"
+          class="text-input welcome-input"
+          placeholder="닉네임을 입력하세요"
+          maxlength="20"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <button id="welcome-start-btn" class="btn-primary welcome-btn">시작하기</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // GitHub Pages 포함 정적 호스팅에서 PWA로 설치/오프라인 지원
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js', { scope: './' }).catch(() => {});
+      });
+    }
+  </script>
+  <script src="script.js"></script>
+</body>
+</html>
