@@ -4,7 +4,7 @@
   "description": "A beautiful New-Tab style page with customizable icons, search, and themes.",
   "start_url": "./",
   "scope": "./",
-  "display": "minimal-ui",
+  "display": "browser",
   "background_color": "#0f0f23",
   "theme_color": "#0f0f23",
   "icons": [
